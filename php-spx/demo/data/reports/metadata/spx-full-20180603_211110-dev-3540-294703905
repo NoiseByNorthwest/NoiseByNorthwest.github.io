@@ -1,38 +1,23 @@
 {
   "key": "spx-full-20180603_211110-dev-3540-294703905",
-  "exec_ts": 1528053070,
+  "exec_ts": 1528052362,
   "host_name": "dev",
-  "process_pid": 3540,
-  "process_tid": 3540,
+  "process_pid": 30612,
+  "process_tid": 30612,
   "process_pwd": "/",
   "cli": 0,
   "cli_command_line": "n/a",
   "http_request_uri": "/",
   "http_method": "GET",
   "http_host": "localhost",
-  "wall_time_ms": 20491,
-  "peak_memory_usage": 1584680,
+  "wall_time_ms": 7771,
+  "peak_memory_usage": 1583360,
   "called_function_count": 1059,
-  "call_count": 6862,
-  "recorded_call_count": 6862,
+  "call_count": 6853,
+  "recorded_call_count": 6853,
   "time_res_us": 0,
   "enabled_metrics": [
     "wt"
-    ,"ct"
-    ,"it"
     ,"zm"
-    ,"zgr"
-    ,"zgb"
-    ,"zgc"
-    ,"zif"
-    ,"zil"
-    ,"zuc"
-    ,"zuf"
-    ,"zuo"
-    ,"zo"
-    ,"ze"
-    ,"io"
-    ,"ior"
-    ,"iow"
   ]
 }

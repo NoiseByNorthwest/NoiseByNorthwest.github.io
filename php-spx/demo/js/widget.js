@@ -1,3 +1,21 @@
+/* SPX - A simple profiler for PHP
+ * Copyright (C) 2018 Sylvain Lassaut <NoiseByNorthwest@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
 import * as utils from './utils.js';
 import * as fmt from './fmt.js';
 import * as math from './math.js';
@@ -16,8 +34,8 @@ function getCallMetricValueColor(profileData, metric, value) {
     if (metricRange.length() > 100) {
         scaleValue =
             Math.log10(value - metricRange.begin)
-                / Math.log10(metricRange.length())
-        ;
+            / Math.log10(metricRange.length())
+            ;
     } else {
         scaleValue = metricRange.lerp(value);
     }
@@ -46,23 +64,23 @@ function getFunctionCategoryColor(funcName) {
     }
 }
 
-function renderSVGTimeGrid(viewPort, timeRangeUs, detailed) {
-    const timeRangeNs = timeRangeUs.copy().scale(1000);
-    const delta = timeRangeNs.length();
+function renderSVGTimeGrid(viewPort, timeRange, detailed) {
+    const delta = timeRange.length();
     let step = Math.pow(10, parseInt(Math.log10(delta)));
     if (delta / step < 4) {
         step /= 5;
     }
 
-    step = Math.max(step, 1000);
+    // 5 as min value so that minor step is lower bounded to 1
+    step = Math.max(step, 5);
 
     const minorStep = step / 5;
 
-    let tickTime = (parseInt(timeRangeNs.begin / minorStep) + 1) * minorStep;
+    let tickTime = (parseInt(timeRange.begin / minorStep) + 1) * minorStep;
     while (1) {
         const majorTick = tickTime % step == 0;
-        const x = viewPort.width * (tickTime - timeRangeNs.begin) / delta;
-        viewPort.appendChild(svg.createNode('line', {
+        const x = viewPort.width * (tickTime - timeRange.begin) / delta;
+        viewPort.appendChildToFragment(svg.createNode('line', {
             x1: x,
             y1: 0,
             x2: x,
@@ -74,17 +92,21 @@ function renderSVGTimeGrid(viewPort, timeRangeUs, detailed) {
         if (majorTick) {
             if (detailed) {
                 const units = ['s', 'ms', 'us', 'ns'];
-                let t = tickTime / 1000;
+                let t = tickTime;
                 let line = 0;
-                while (t > 0) {
+                while (t > 0 && units.length > 0) {
                     const unit = units.pop();
-                    const m = t % 1000;
-                    t = parseInt(t / 1000);
+                    let m = t;
+                    if (units.length > 0) {
+                        m = m % 1000;
+                        t = parseInt(t / 1000);
+                    }
+
                     if (m == 0) {
                         continue;
                     }
 
-                    viewPort.appendChild(svg.createNode('text', {
+                    viewPort.appendChildToFragment(svg.createNode('text', {
                         x: x + 2,
                         y: viewPort.height - 10 - 20 * line++,
                         width: 100,
@@ -96,7 +118,7 @@ function renderSVGTimeGrid(viewPort, timeRangeUs, detailed) {
                     }));
                 }
             } else {
-                viewPort.appendChild(svg.createNode(
+                viewPort.appendChildToFragment(svg.createNode(
                     'text',
                     {
                         x: x + 2,
@@ -106,13 +128,13 @@ function renderSVGTimeGrid(viewPort, timeRangeUs, detailed) {
                         'font-size': 12,
                         fill: '#aaa',
                     },
-                    node => node.textContent = fmt.time(tickTime / 1000)
+                    node => node.textContent = fmt.time(tickTime)
                 ));
             }
         }
 
         tickTime += minorStep;
-        if (tickTime > timeRangeNs.end) {
+        if (tickTime > timeRange.end) {
             break;
         }
     }
@@ -168,7 +190,7 @@ function renderSVGMetricValuesPlot(viewPort, profileData, metric, timeRange) {
         if (timeComponentMetric) {
             currentValue = (currentMetricValues.getValue(metric) - previousMetricValues.getValue(metric))
                 / (currentMetricValues.getValue('wt') - previousMetricValues.getValue('wt'))
-            ;
+                ;
         }
 
         points.push(i);
@@ -183,7 +205,7 @@ function renderSVGMetricValuesPlot(viewPort, profileData, metric, timeRange) {
 
     console.timeEnd('renderSVGMetricValuesPlot')
 
-    viewPort.appendChild(svg.createNode('polyline', {
+    viewPort.appendChildToFragment(svg.createNode('polyline', {
         points: points.join(' '),
         stroke: '#0af',
         'stroke-width': 2,
@@ -195,7 +217,7 @@ function renderSVGMetricValuesPlot(viewPort, profileData, metric, timeRange) {
     while (tickValue < valueRange.end) {
         const y = parseInt(viewPort.height * (1 - valueRange.lerpDist(tickValue)));
 
-        viewPort.appendChild(svg.createNode('line', {
+        viewPort.appendChildToFragment(svg.createNode('line', {
             x1: 0,
             y1: y,
             x2: viewPort.width,
@@ -204,7 +226,7 @@ function renderSVGMetricValuesPlot(viewPort, profileData, metric, timeRange) {
             'stroke-width': 0.5
         }));
 
-        viewPort.appendChild(svg.createNode('text', {
+        viewPort.appendChildToFragment(svg.createNode('text', {
             x: 10,
             y: y - 5,
             width: 100,
@@ -331,6 +353,8 @@ class ViewPort {
             x: this.x,
             y: this.y,
         });
+
+        this.fragment = null;
     }
 
     createSubViewPort(width, height, x, y) {
@@ -347,14 +371,29 @@ class ViewPort {
         this.node.setAttribute('height', this.height);
     }
 
+    appendChildToFragment(child) {
+        if (!this.fragment) {
+            this.fragment = document.createDocumentFragment();
+        }
+
+        this.fragment.appendChild(child);
+    }
+
+    flushFragment() {
+        if (!this.fragment) {
+            return;
+        }
+
+        this.appendChild(this.fragment);
+        this.fragment = null;
+    }
+
     appendChild(child) {
         this.node.appendChild(child);
     }
 
     clear() {
-        while (this.node.firstChild) {
-            this.node.removeChild(this.node.firstChild);
-        }
+        this.node.innerHTML = null;
     }
 }
 
@@ -366,6 +405,8 @@ class Widget {
         this.timeRange = profileData.getTimeRange();
         this.timeRangeStats = profileData.getTimeRangeStats(this.timeRange);
         this.currentMetric = profileData.getMetadata().enabled_metrics[0];
+        this.repaintTimeout = null;
+        this.resizingTimeouts = [];
         this.colorSchemeMode = null;
         this.functionColorResolver = (functionName, defaultColor) => {
             switch (this.colorSchemeMode) {
@@ -377,9 +418,7 @@ class Widget {
             }
         };
 
-        $(window).on('resize', () => {
-            this.repaint();
-        });
+        $(window).on('resize', () => this.handleResize());
 
         $(window).on('spx-timerange-update', (e, timeRange, timeRangeStats) => {
             this.timeRange = timeRange;
@@ -404,7 +443,6 @@ class Widget {
     }
 
     onTimeRangeUpdate() {
-        this.repaint();
     }
 
     onColorSchemeModeUpdate() {
@@ -439,15 +477,54 @@ class Widget {
         this.container.empty();
     }
 
+    handleResize() {
+        for (const t of this.resizingTimeouts) {
+            clearTimeout(t);
+        }
+
+        this.resizingTimeouts = [];
+
+        const handle = () => {
+            this.onContainerResize();
+            this.repaint();
+        };
+
+        // Several delayed handler() calls are required to both optimize responsiveness and fix
+        // the appearing/disappearing scrollbar issue.
+
+        handle();
+        this.resizingTimeouts.push(setTimeout(handle, 80));
+        this.resizingTimeouts.push(setTimeout(handle, 800));
+        this.resizingTimeouts.push(setTimeout(handle, 1500));
+    }
+
+    onContainerResize() {
+    }
+
     render() {
     }
 
     repaint() {
-        const id = this.container.attr('id');
-        console.time('repaint ' + id);
-        this.clear();
-        this.render();
-        console.timeEnd('repaint ' + id);
+        if (this.repaintTimeout !== null) {
+            return;
+        }
+
+        this.repaintTimeout = setTimeout(
+            () => {
+                this.repaintTimeout = null;
+
+                const id = this.container.attr('id');
+                console.time('repaint ' + id);
+                console.time('clear ' + id);
+                this.clear();
+                console.timeEnd('clear ' + id);
+                console.time('render ' + id);
+                this.render();
+                console.timeEnd('render ' + id);
+                console.timeEnd('repaint ' + id);
+            },
+            0
+        );
     }
 }
 
@@ -631,10 +708,10 @@ export class ColorSchemeManager extends Widget {
         const idx = parseInt(elem.closest('li').dataset['index'], 10);
         const categories = utils.getCategories();
 
-        const pushTarget = Math.max(idx-1, 0);
+        const pushTarget = Math.max(idx - 1, 0);
         switch (elem.name) {
             case 'push-down':
-                pushTarget = Math.min(idx+1, categories.length-1);
+                pushTarget = Math.min(idx + 1, categories.length - 1);
             case 'push-up':
                 categories.splice(pushTarget, 0, categories.splice(idx, 1)[0]);
                 break;
@@ -687,31 +764,19 @@ class SVGWidget extends Widget {
 
     clear() {
         this.viewPort.clear();
+    }
 
-        // save viewPort size before shrinking
-        const viewPortWidth = this.viewPort.width;
-        const viewPortHeight = this.viewPort.height;
+    onContainerResize() {
+        super.onContainerResize()
 
         // viewPort internal svg shrinking is first required to let the container get
-        // its correct size
+        // its actual size.
         this.viewPort.resize(0, 0);
-
-        const resized = 0
-            || viewPortWidth != this.container.width()
-            || viewPortHeight != this.container.height()
-        ;
 
         this.viewPort.resize(
             this.container.width(),
             this.container.height()
         );
-
-        if (resized) {
-            this.onContainerResize();
-        }
-    }
-
-    onContainerResize() {
     }
 }
 
@@ -719,9 +784,6 @@ export class ColorScale extends SVGWidget {
 
     constructor(container, profileData) {
         super(container, profileData);
-    }
-
-    onTimeRangeUpdate() {
     }
 
     onColorSchemeModeUpdate() {
@@ -744,11 +806,11 @@ export class ColorScale extends SVGWidget {
                 .lerp(
                     Math.pow(x, exp) / Math.pow(this.viewPort.width, exp)
                 )
-            ;
+                ;
         }
 
         for (let i = 0; i < this.viewPort.width; i += step) {
-            this.viewPort.appendChild(svg.createNode('rect', {
+            this.viewPort.appendChildToFragment(svg.createNode('rect', {
                 x: i,
                 y: 0,
                 width: step,
@@ -762,7 +824,7 @@ export class ColorScale extends SVGWidget {
         }
 
         for (let i = 0; i < this.viewPort.width; i += step * 20) {
-            this.viewPort.appendChild(svg.createNode('text', {
+            this.viewPort.appendChildToFragment(svg.createNode('text', {
                 x: i,
                 y: this.viewPort.height - 5,
                 width: 100,
@@ -775,6 +837,8 @@ export class ColorScale extends SVGWidget {
                 );
             }));
         }
+
+        this.viewPort.flushFragment();
     }
 }
 
@@ -792,9 +856,6 @@ export class CategoryLegend extends SVGWidget {
         }
     }
 
-    onTimeRangeUpdate() {
-    }
-
     render() {
         let categories = utils.getCategories(true);
         let width = this.viewPort.width / categories.length;
@@ -802,14 +863,14 @@ export class CategoryLegend extends SVGWidget {
         for (let i = 0; i < categories.length; i++) {
             let category = categories[i];
             let [r, g, b] = category.color;
-            this.viewPort.appendChild(svg.createNode('rect', {
+            this.viewPort.appendChildToFragment(svg.createNode('rect', {
                 x: width * i,
                 y: 0,
                 width,
                 height: this.viewPort.height,
                 fill: `rgb(${r},${g},${b})`,
             }));
-            this.viewPort.appendChild(svg.createNode('text', {
+            this.viewPort.appendChildToFragment(svg.createNode('text', {
                 x: width * i + 4,
                 y: 13,
                 width,
@@ -819,6 +880,8 @@ export class CategoryLegend extends SVGWidget {
                 fill: '#000',
             }, node => { node.textContent = category.label }));
         }
+
+        this.viewPort.flushFragment();
     }
 }
 
@@ -834,6 +897,10 @@ export class OverView extends SVGWidget {
         );
 
         let action = null;
+        this.container.mouseleave(e => {
+            action = null;
+        });
+
         this.container.on('mousedown mousemove', e => {
             if (e.type == 'mousemove' && e.buttons != 1) {
                 if (math.dist(e.clientX, this.viewTimeRange.getViewRange().begin) < 4) {
@@ -890,12 +957,12 @@ export class OverView extends SVGWidget {
     }
 
     onContainerResize() {
-        this.viewTimeRange.setViewWidth(this.container.width());
         super.onContainerResize();
+        this.viewTimeRange.setViewWidth(this.container.width());
     }
 
     render() {
-        this.viewPort.appendChild(svg.createNode('rect', {
+        this.viewPort.appendChildToFragment(svg.createNode('rect', {
             x: 0,
             y: 0,
             width: this.viewPort.width,
@@ -921,7 +988,7 @@ export class OverView extends SVGWidget {
             const h = 1;
             const y = call.getDepth();
 
-            this.viewPort.appendChild(svg.createNode('line', {
+            this.viewPort.appendChildToFragment(svg.createNode('line', {
                 x1: x,
                 y1: y,
                 x2: x + w,
@@ -964,7 +1031,8 @@ export class OverView extends SVGWidget {
             'fill-opacity': '0.1',
         });
 
-        this.viewPort.appendChild(this.timeRangeRect);
+        this.viewPort.appendChildToFragment(this.timeRangeRect);
+        this.viewPort.flushFragment();
     }
 }
 
@@ -985,6 +1053,10 @@ export class TimeLine extends SVGWidget {
         this.svgTextPool = new svg.NodePool('text');
 
         this.container.bind('wheel', e => {
+            if (e.originalEvent.deltaY == 0) {
+                return;
+            }
+
             e.preventDefault();
             let f = 1.5;
             if (e.originalEvent.deltaY < 0) {
@@ -996,15 +1068,33 @@ export class TimeLine extends SVGWidget {
             this.notifyTimeRangeUpdate(this.viewTimeRange.getTimeRange());
         });
 
-        let lastPos = {x: 0, y: 0};
+        let lastPos = { x: 0, y: 0 };
+        let dragging = false;
 
         this.container.mousedown(e => {
+            dragging = true;
             lastPos.x = e.clientX;
             lastPos.y = e.clientY;
         });
 
+        this.container.mouseup(e => {
+            dragging = false;
+        });
+
+        this.container.mouseleave(e => {
+            dragging = false;
+        });
+
         this.container.mousemove(e => {
-            let delta = {
+            if (e.buttons == 0) {
+                dragging = false;
+            }
+
+            if (!dragging) {
+                return;
+            }
+
+            const delta = {
                 x: e.clientX - lastPos.x,
                 y: e.clientY - lastPos.y,
             };
@@ -1081,15 +1171,6 @@ export class TimeLine extends SVGWidget {
 
             pointedElement.setAttribute('stroke', '#0ff');
 
-            this.infoViewPort.appendChild(svg.createNode('rect', {
-                x: 0,
-                y: 0,
-                width: this.infoViewPort.width,
-                height: this.infoViewPort.height,
-                'fill-opacity': '0.5',
-                'pointer-events': 'none',
-            }));
-
             const call = this.profileData.getCall(callIdx);
             const currentMetricName = this.profileData.getMetricInfo(this.currentMetric).name;
             const formatter = this.profileData.getMetricFormatter(this.currentMetric);
@@ -1113,16 +1194,16 @@ export class TimeLine extends SVGWidget {
 
     onTimeRangeUpdate() {
         this.viewTimeRange.setTimeRange(this.timeRange.copy());
-        super.onTimeRangeUpdate();
+        this.repaint();
     }
 
     onContainerResize() {
-        this.viewTimeRange.setViewWidth(this.container.width());
         super.onContainerResize();
+        this.viewTimeRange.setViewWidth(this.container.width());
     }
 
     render() {
-        this.viewPort.appendChild(svg.createNode('rect', {
+        this.viewPort.appendChildToFragment(svg.createNode('rect', {
             x: 0,
             y: 0,
             width: this.viewPort.width,
@@ -1138,7 +1219,7 @@ export class TimeLine extends SVGWidget {
 
         const viewRange = this.viewTimeRange.getScaledViewRange();
         const offsetX = -viewRange.begin;
-        
+
         this.svgRectPool.releaseAll();
         this.svgTextPool.releaseAll();
 
@@ -1161,6 +1242,9 @@ export class TimeLine extends SVGWidget {
 
             const h = 12;
             const y = (h + 1) * call.getDepth() + this.offsetY;
+            if (y + h < 0 || y > this.viewPort.height) {
+                continue;
+            }
 
             const rect = this.svgRectPool.acquire({
                 x: x,
@@ -1180,7 +1264,7 @@ export class TimeLine extends SVGWidget {
                 'data-call-idx': call.getIdx(),
             });
 
-            this.viewPort.appendChild(rect);
+            this.viewPort.appendChildToFragment(rect);
 
             if (w > 20) {
                 const text = this.svgTextPool.acquire({
@@ -1192,9 +1276,17 @@ export class TimeLine extends SVGWidget {
                 });
 
                 text.textContent = utils.truncateFunctionName(call.getFunctionName(), w / 7);
-                this.viewPort.appendChild(text);
+                this.viewPort.appendChildToFragment(text);
             }
         }
+
+        renderSVGTimeGrid(
+            this.viewPort,
+            timeRange,
+            true
+        );
+
+        this.viewPort.flushFragment();
 
         const overlayHeight = 100;
         const overlayViewPort = this.viewPort.createSubViewPort(
@@ -1204,7 +1296,7 @@ export class TimeLine extends SVGWidget {
             this.viewPort.height - overlayHeight
         );
 
-        overlayViewPort.appendChild(svg.createNode('rect', {
+        overlayViewPort.appendChildToFragment(svg.createNode('rect', {
             x: 0,
             y: 0,
             width: overlayViewPort.width,
@@ -1212,12 +1304,6 @@ export class TimeLine extends SVGWidget {
             'fill-opacity': '0.5',
             'pointer-events': 'none',
         }));
-
-        renderSVGTimeGrid(
-            this.viewPort,
-            timeRange,
-            true
-        );
 
         if (this.currentMetric != 'wt') {
             renderSVGMetricValuesPlot(
@@ -1227,6 +1313,8 @@ export class TimeLine extends SVGWidget {
                 timeRange
             );
         }
+
+        overlayViewPort.flushFragment();
 
         this.infoViewPort = overlayViewPort.createSubViewPort(
             overlayViewPort.width,
@@ -1310,6 +1398,10 @@ export class FlameGraph extends SVGWidget {
         });
     }
 
+    onTimeRangeUpdate() {
+        this.repaint();
+    }
+
     render() {
         this.viewPort.appendChild(svg.createNode('rect', {
             x: 0,
@@ -1326,7 +1418,7 @@ export class FlameGraph extends SVGWidget {
                 height: 20,
                 'font-size': 14,
                 fill: '#089',
-            }, function(node) {
+            }, function (node) {
                 node.textContent = 'This visualization is not available for this metric.';
             }));
 
@@ -1346,7 +1438,7 @@ export class FlameGraph extends SVGWidget {
                 * node.getInc().getValue(this.currentMetric)
                 / (maxCumInc)
                 - 1
-            ;
+                ;
 
             if (w < 0.3) {
                 return x;
@@ -1363,7 +1455,7 @@ export class FlameGraph extends SVGWidget {
             this.renderedCgNodes.push(node);
             const nodeIdx = this.renderedCgNodes.length - 1;
 
-            this.viewPort.appendChild(this.svgRectPool.acquire({
+            this.viewPort.appendChildToFragment(this.svgRectPool.acquire({
                 x: x,
                 y: y,
                 width: w,
@@ -1376,10 +1468,10 @@ export class FlameGraph extends SVGWidget {
                         new math.Vec3(1, 0, 0),
                         new math.Vec3(1, 1, 0),
                         0.5
-                            * Math.min(1, node.getDepth() / 20)
+                        * Math.min(1, node.getDepth() / 20)
                         + 0.5
-                            * node.getInc().getValue(this.currentMetric)
-                            / (maxCumInc)
+                        * node.getInc().getValue(this.currentMetric)
+                        / (maxCumInc)
                     ).toHTMLColor()
                 ),
                 'fill-opacity': '1',
@@ -1394,9 +1486,9 @@ export class FlameGraph extends SVGWidget {
                     height: h,
                     'font-size': h - 2,
                 });
-            
+
                 text.textContent = utils.truncateFunctionName(node.getFunctionName(), w / 7);
-                this.viewPort.appendChild(text);
+                this.viewPort.appendChildToFragment(text);
             }
 
             return Math.max(x + w, childrenX);
@@ -1406,7 +1498,7 @@ export class FlameGraph extends SVGWidget {
             .timeRangeStats
             .getCallTreeStats(this.timeRange)
             .getRoot()
-        ;
+            ;
 
         const maxCumInc = cgRoot.getMaxCumInc().getValue(this.currentMetric);
 
@@ -1414,6 +1506,8 @@ export class FlameGraph extends SVGWidget {
         for (const child of cgRoot.getChildren()) {
             x = renderNode(child, maxCumInc, x);
         }
+
+        this.viewPort.flushFragment();
 
         this.pointedElement = null;
 
@@ -1433,6 +1527,10 @@ export class FlatProfile extends Widget {
 
         this.sortCol = 'exc';
         this.sortDir = -1;
+    }
+
+    onTimeRangeUpdate() {
+        this.repaint();
     }
 
     render() {
@@ -1525,7 +1623,7 @@ export class FlatProfile extends Widget {
             const stats = functionsStats[i];
 
             const neg = stats.inc.getValue(this.currentMetric) < 0 ? 1 : 0;
-            const relRange =  neg ?
+            const relRange = neg ?
                 cumCostStats.getNegRange(this.currentMetric) : cumCostStats.getPosRange(this.currentMetric);
 
             const inc = stats.inc.getValue(this.currentMetric);
@@ -1548,15 +1646,15 @@ export class FlatProfile extends Widget {
     <td
         title="${funcName}"
         style="text-align: left; font-size: 12px; color: black; background-color: ${
-            this.functionColorResolver(
-                funcName,
-                getCallMetricValueColor(
-                    this.profileData,
-                    this.currentMetric,
-                    stats.inc.getValue(this.currentMetric)
+                this.functionColorResolver(
+                    funcName,
+                    getCallMetricValueColor(
+                        this.profileData,
+                        this.currentMetric,
+                        stats.inc.getValue(this.currentMetric)
+                    )
                 )
-            )
-        }"
+                }"
     >
         ${utils.truncateFunctionName(funcName, (this.container.width() - 5 * 90) / 8)}
     </td>

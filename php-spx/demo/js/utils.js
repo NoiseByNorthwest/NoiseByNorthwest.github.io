@@ -1,3 +1,21 @@
+/* SPX - A simple profiler for PHP
+ * Copyright (C) 2018 Sylvain Lassaut <NoiseByNorthwest@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
 import * as math from './math.js';
 
 export function getCookieVar(name) {
@@ -19,7 +37,7 @@ export function truncateFunctionName(str, max) {
 }
 
 function process(func, async, delay) {
-    if (async || false) {
+    if (async || false) {
         setTimeout(func, delay || 0);
     } else {
         func();
@@ -169,7 +187,7 @@ export class PackedRecordArray {
         const elemOffset = idx * this.elemSize;
 
         for (let field of this.fields) {
-            field.typeArray[idx * field.typeElemSize + field.typeOffset] = obj[field.name] || 0;
+            field.typeArray[idx * field.typeElemSize + field.typeOffset] = obj[field.name] || 0;
         }
     }
 
@@ -180,7 +198,7 @@ export class PackedRecordArray {
 
         const field = this.fields[this.fieldIndexes[fieldName]];
 
-        field.typeArray[idx * field.typeElemSize + field.typeOffset] = fieldValue || 0;
+        field.typeArray[idx * field.typeElemSize + field.typeOffset] = fieldValue || 0;
     }
 
     getElement(idx) {
@@ -211,10 +229,10 @@ export class PackedRecordArray {
 let categCache = null;
 const categStoreKey = 'spx-report-current-categories';
 
-export function getCategories(includeUncategorized=false) {
+export function getCategories(includeUncategorized = false) {
     if (categCache === null) {
         let loaded = window.localStorage.getItem(categStoreKey);
-        categCache = !!loaded ? JSON.parse(loaded): [];
+        categCache = !!loaded ? JSON.parse(loaded) : [];
         categCache.forEach(c => {
             c.patterns = c.patterns.map(p => new RegExp(p, 'gi'))
         });
@@ -224,7 +242,7 @@ export function getCategories(includeUncategorized=false) {
         let all = categCache.slice();
         all.push({
             label: '<uncategorized>',
-            color: [140,140,140],
+            color: [140, 140, 140],
             patterns: [/./],
             isDefault: true
         });

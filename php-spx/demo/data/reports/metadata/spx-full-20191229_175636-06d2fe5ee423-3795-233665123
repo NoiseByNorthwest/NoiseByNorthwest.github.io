@@ -1,0 +1,22 @@
+{
+  "key": "spx-full-20191229_175636-06d2fe5ee423-3795-233665123",
+  "exec_ts": 1577642196,
+  "host_name": "06d2fe5ee423",
+  "process_pid": 3795,
+  "process_tid": 3795,
+  "process_pwd": "/tmp",
+  "cli": 0,
+  "cli_command_line": "tag=consectetur",
+  "http_request_uri": "/en/blog/?tag=consectetur",
+  "http_method": "GET",
+  "http_host": "localhost:8000",
+  "wall_time_ms": 209671,
+  "peak_memory_usage": 23357280,
+  "called_function_count": 3567,
+  "call_count": 129369,
+  "recorded_call_count": 129369,
+  "enabled_metrics": [
+    "wt"
+    ,"zm"
+  ]
+}

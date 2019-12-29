@@ -1,3 +1,21 @@
+/* SPX - A simple profiler for PHP
+ * Copyright (C) 2018 Sylvain Lassaut <NoiseByNorthwest@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
 import * as utils from './utils.js';
 import * as fmt from './fmt.js';
 import * as math from './math.js';
@@ -309,8 +327,8 @@ class CallList {
         //       file count metric could be stored as uint16)
         for (let metric of this.metrics) {
             structure['start_' + metric] = 'float64';
-            structure['end_'   + metric] = 'float64';
-            structure['exc_'   + metric] = 'float64';
+            structure['end_' + metric] = 'float64';
+            structure['exc_' + metric] = 'float64';
         }
 
         this.array = new utils.PackedRecordArray(structure, size);
@@ -334,8 +352,8 @@ class CallList {
             const metric = this.metrics[i];
 
             elt['start_' + metric] = start[i];
-            elt['end_'   + metric] = end[i];
-            elt['exc_'   + metric] = exc[i];
+            elt['end_' + metric] = end[i];
+            elt['exc_' + metric] = exc[i];
         }
 
         this.array.setElement(idx, elt);
@@ -677,7 +695,7 @@ class CallTreeStatsNode {
             .keys(this.children)
             .map(k => this.children[k])
             .sort((a, b) => a.minTime - b.minTime)
-        ;
+            ;
     }
 
     getDepth() {
@@ -1014,7 +1032,7 @@ class CallRangeTree {
 
         if (lCallRefs.length < minCallsPerNode) {
             tree.callRefs = tree.callRefs.concat(lCallRefs);
-            lCallRefs = [];
+            lCallRefs = [];
         }
 
         if (rCallRefs.length < minCallsPerNode) {
@@ -1025,7 +1043,7 @@ class CallRangeTree {
         tree.callRefs.sort((a, b) => {
             a = callList.getCall(a).getTimeRange().length();
             b = callList.getCall(b).getTimeRange().length();
-            
+
             // N.B. "b - a" does not work on Chromium 62.0.3202.94 !!!
 
             if (a == b) {
@@ -1153,7 +1171,7 @@ class ProfileData {
         return this.metadata;
     }
 
-    getStats() {
+    getStats() {
         return this.stats;
     }
 
@@ -1174,7 +1192,7 @@ class ProfileData {
         const timeRangeStats = this
             .callRangeTree
             .getTimeRangeStats(range)
-        ;
+            ;
 
         console.timeEnd('getTimeRangeStats');
 

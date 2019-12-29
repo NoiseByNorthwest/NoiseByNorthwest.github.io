@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>SPX Report</title>
     <link rel="stylesheet" href="css/main.css">
 </head>
+
 <body>
     <div id="init-report">
         <div>
@@ -29,38 +31,24 @@
         <div id="overview" class="widget visualization" style="flex: 0 0 80px"></div>
         <div style="flex:1; min-height: 0; display: flex; flex-direction: column;">
             <div id="timeline" class="widget visualization" style="flex: 0 0 auto; height: 300px"></div>
-            <div
-                style="flex: 0 0 3px; width: 100%; background-color: #444; cursor: row-resize;"
-                data-layout-splitter-target="timeline"
-                data-layout-splitter-axis="y"
-                data-layout-splitter-dir="-1"
-                data-layout-splitter-min="30"
-            ></div>
+            <div style="flex: 0 0 3px; width: 100%; background-color: #444; cursor: row-resize;"
+                data-layout-splitter-target="timeline" data-layout-splitter-axis="y" data-layout-splitter-dir="-1"
+                data-layout-splitter-min="30"></div>
             <div style="flex: 1; min-height: 0; display: flex; flex-direction: row;">
                 <div id="flatprofile" class="widget" style="flex: 0 0 auto; width: 900px"></div>
-                <div
-                    style="flex: 0 0 3px; height: 100%; background-color: #444; cursor: col-resize;"
-                    data-layout-splitter-target="flatprofile"
-                    data-layout-splitter-axis="x"
-                    data-layout-splitter-dir="-1"
-                    data-layout-splitter-min="500"
-                ></div>
+                <div style="flex: 0 0 3px; height: 100%; background-color: #444; cursor: col-resize;"
+                    data-layout-splitter-target="flatprofile" data-layout-splitter-axis="x"
+                    data-layout-splitter-dir="-1" data-layout-splitter-min="500"></div>
                 <div id="flamegraph" class="widget visualization" style="flex: 1 1 auto"></div>
             </div>
         </div>
     </div>
 
-    <script
-        src="https://code.jquery.com/jquery-3.2.1.min.js"
-        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
-        crossorigin="anonymous"
-    ></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
 
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.0.4/jscolor.min.js"
-        integrity="sha256-CJWfUCeP3jLdUMVNUll6yQx37gh9AKmXTRxvRf7jzro="
-        crossorigin="anonymous"
-    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.0.4/jscolor.min.js"
+        integrity="sha256-CJWfUCeP3jLdUMVNUll6yQx37gh9AKmXTRxvRf7jzro=" crossorigin="anonymous"></script>
 
     <!-- Required workaround for Firefox to fix a "no credentials" issue -->
     <script type="module" crossorigin src="js/fmt.js"></script>
@@ -70,7 +58,7 @@
 
     <script type="module" crossorigin>
         import * as fmt from './js/fmt.js';
-        import {ProfileDataBuilder} from './js/profileData.js';
+        import { ProfileDataBuilder } from './js/profileData.js';
         import * as widget from './js/widget.js';
         import * as layoutSplitter from './js/layoutSplitter.js';
 
@@ -117,24 +105,24 @@
 
                 const remainingTime = Math.round(
                     (total - current)
-                        * (
-                            (currentTime - initDialog.data[title].startTime)
-                            / (current - initDialog.data[title].startCount)
-                        )
+                    * (
+                        (currentTime - initDialog.data[title].startTime)
+                        / (current - initDialog.data[title].startCount)
+                    )
                 );
 
                 initDialog.progressInfo.text(
                     fmt.pct(current / total) + ' (' + fmt.quantity(current) + ')'
-                        + ' ETA: ' + remainingTime + 's'
+                    + ' ETA: ' + remainingTime + 's'
                 );
             }
 
-            fetch('data/metrics', {credentials: "same-origin"})
+            fetch('data/metrics', { credentials: "same-origin" })
                 .then(response => response.json())
                 .then(response => {
                     profileDataBuilder = new ProfileDataBuilder(response.results);
 
-                    return fetch('data/reports/metadata/' + key, {credentials: "same-origin"});
+                    return fetch('data/reports/metadata/' + key, { credentials: "same-origin" });
                 })
                 .then(response => {
                     if (!response.ok) {
@@ -146,7 +134,7 @@
                 .then(metadata => {
                     profileDataBuilder.setMetadata(metadata);
 
-                    return fetch('data/reports/get/' + key, {credentials: "same-origin"});
+                    return fetch('data/reports/get/' + key, { credentials: "same-origin" });
                 })
                 .then(response => {
                     if (!response.ok) {
@@ -294,8 +282,9 @@
                 })
                 .then(() => initDialog.container.fadeOut(500))
                 .catch(e => initDialog.progressInfo.text(e))
-            ;
+                ;
         });
     </script>
 </body>
+
 </html>
